@@ -72,4 +72,53 @@ resource "aws_main_route_table_association" "a" {
   route_table_id = "${aws_route_table.blog-public-route-table.id}"
 }
 
-# provision EC2 instance in public subnet (optional, elastic IP)
+# create security group for SSH
+resource "aws_security_group" "basic-security-group" {
+  name        = "basic_group"           # 'group name' column
+  description = "Allow SSH inbound traffic"
+  vpc_id      = "${aws_vpc.blog-vpc.id}"
+
+  # ssh
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # HTTPS inbound
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # HTTPS outbound
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # for DNS lookups
+  egress {
+    from_port   = 53
+    to_port     = 53
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # HTTP
+  egress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "basic_security_group" # 'security group name' column
+  }
+}

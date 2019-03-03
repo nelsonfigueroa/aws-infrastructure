@@ -3,7 +3,7 @@ data "aws_ami" "ubuntu" {
 
   # search filters for image
   filter {
-    name   = "name" # name filter
+    name   = "name"                                                       # name filter
     values = ["ubuntu/images/hvm-ssd/ubuntu-bionic-18.04-amd64-server-*"]
   }
 
@@ -27,4 +27,14 @@ resource "aws_instance" "blog-app" {
 
   # assign this instance to public subnet created in resources.tf file
   subnet_id = "${aws_subnet.blog-public-subnet.id}"
+
+  # assign public IP automatically
+  associate_public_ip_address = true
+
+  # associate elastic IP (optional)
+
+  # specify private key (assuming key was previously created)
+  key_name = "blog"
+  # associate previously made security group with instance
+  vpc_security_group_ids = ["${aws_security_group.basic-security-group.id}"]
 }
