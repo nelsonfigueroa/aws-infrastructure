@@ -1,3 +1,2 @@
-# infrastructure
-Terraform learning project.
-This infrastructure will be used in the future for my personal site.
+# Terraform Blog Infrastructure
+This is primarily a project done to learn terraform. The infrastructure will be used for my blog Ruby on Rails app.
