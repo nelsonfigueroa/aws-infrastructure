@@ -73,4 +73,3 @@ resource "aws_main_route_table_association" "a" {
 }
 
 # provision EC2 instance in public subnet (optional, elastic IP)
-# use association resources for subnet?
