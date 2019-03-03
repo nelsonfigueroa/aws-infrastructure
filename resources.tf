@@ -1,9 +1,9 @@
 # create a VPC
 resource "aws_vpc" "blog-vpc" {
-  cidr_block = "10.0.0.0/16"
+  cidr_block           = "10.0.0.0/16"
   enable_dns_hostnames = true
-  enable_dns_support = true
-  
+  enable_dns_support   = true
+
   tags = {
     Name = "blog_vpc"
   }
@@ -12,10 +12,10 @@ resource "aws_vpc" "blog-vpc" {
 # create public subnet
 
 resource "aws_subnet" "blog-public-subnet" {
-  cidr_block = "10.0.0.0/24"
-  vpc_id = "${aws_vpc.blog-vpc.id}"
+  cidr_block        = "10.0.0.0/24"
+  vpc_id            = "${aws_vpc.blog-vpc.id}"
   availability_zone = "us-west-1b"
-  
+
   tags = {
     Name = "blog_subnet_public"
   }
@@ -23,32 +23,54 @@ resource "aws_subnet" "blog-public-subnet" {
 
 # create private subnet
 resource "aws_subnet" "blog-private-subnet" {
-  cidr_block = "10.0.1.0/24"
-  vpc_id = "${aws_vpc.blog-vpc.id}"
+  cidr_block        = "10.0.1.0/24"
+  vpc_id            = "${aws_vpc.blog-vpc.id}"
   availability_zone = "us-west-1b"
-  
+
   tags = {
     Name = "blog_subnet_private"
   }
 }
 
-# TODO: route table? ACL? these get created by default with new VPC so idk.
-# ACL and Route Table are associated to VPC...check VPC description
+# provision internet gateway and attach to VPC
+resource "aws_internet_gateway" "blog-gateway" {
+  vpc_id = "${aws_vpc.blog-vpc.id}"
 
-# TODO: add an internet gateway, or provision a NAT instance
+  tags = {
+    Name = "blog_gateway"
+  }
+}
 
-# TODO: create a security group
+# change route table associated with public subnet (1 route table created by default with VPC i think)
+#...or create one
+resource "aws_route_table" "blog-public-route-table" {
+  vpc_id = "${aws_vpc.blog-vpc.id}"
 
-# resource "aws_security_group" "subnetsecurity" {
-#   vpc_id = "${aws_vpc.blog-vpc.id}"
+  # Note that the default route, mapping the VPC's CIDR block to "local", is created implicitly and cannot be specified.
 
-#   ingress {
-#     cidr_blocks = [
-#       "${aws_vpc.blog-vpc.cidr_block}"
-#     ]
+  route {
+    # destination
+    cidr_block = "0.0.0.0/0"
 
-#   from_port = 80
-#   to_port = 80
-#   protocol = "tcp"
-#   }
-# }
+    # target
+    gateway_id = "${aws_internet_gateway.blog-gateway.id}"
+  }
+  tags = {
+    Name = "blog_public_route_table"
+  }
+}
+
+# associate a subnet with the route table (public subnet in this case)
+resource "aws_route_table_association" "route-table-association" {
+  subnet_id      = "${aws_subnet.blog-public-subnet.id}"
+  route_table_id = "${aws_route_table.blog-public-route-table.id}"
+}
+
+# set the main route table for VPC
+resource "aws_main_route_table_association" "a" {
+  vpc_id         = "${aws_vpc.blog-vpc.id}"
+  route_table_id = "${aws_route_table.blog-public-route-table.id}"
+}
+
+# provision EC2 instance in public subnet (optional, elastic IP)
+# use association resources for subnet?
