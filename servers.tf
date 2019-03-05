@@ -16,6 +16,7 @@ data "aws_ami" "ubuntu" {
   owners = ["099720109477"]
 }
 
+# EC2 instance as app server
 resource "aws_instance" "blog-app" {
   # take result from 'data' block above and assign to ami property of instance
   ami           = "${data.aws_ami.ubuntu.id}"
@@ -36,5 +37,26 @@ resource "aws_instance" "blog-app" {
   # specify private key (assuming key was previously created)
   key_name = "blog"
   # associate previously made security group with instance
-  vpc_security_group_ids = ["${aws_security_group.basic-security-group.id}"]
+  vpc_security_group_ids = ["${aws_security_group.public-security-group.id}"]
+}
+
+# EC2 instance for database
+resource "aws_instance" "blog-database" {
+  # take result from 'data' block above and assign to ami property of instance
+  ami           = "${data.aws_ami.ubuntu.id}"
+  instance_type = "t2.micro"
+
+  tags {
+    Name = "blog_database"
+  }
+
+  # assign this instance to private subnet created in resources.tf file
+  subnet_id = "${aws_subnet.blog-private-subnet.id}"
+
+  # no public IP for this instance
+
+  # specify private key (assuming key was previously created)
+  key_name = "blog"
+  # associate previously made security group with instance
+  vpc_security_group_ids = ["${aws_security_group.private-security-group.id}"]
 }

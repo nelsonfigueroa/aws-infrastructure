@@ -72,9 +72,9 @@ resource "aws_main_route_table_association" "a" {
   route_table_id = "${aws_route_table.blog-public-route-table.id}"
 }
 
-# create security group for SSH
-resource "aws_security_group" "basic-security-group" {
-  name        = "basic_group"           # 'group name' column
+# create security group for public EC2 Instance
+resource "aws_security_group" "public-security-group" {
+  name        = "public_group"              # 'group name' column
   description = "Allow SSH inbound traffic"
   vpc_id      = "${aws_vpc.blog-vpc.id}"
 
@@ -119,6 +119,28 @@ resource "aws_security_group" "basic-security-group" {
   }
 
   tags = {
-    Name = "basic_security_group" # 'security group name' column
+    Name = "public_security_group" # 'security group name' column
+  }
+}
+
+# create security group for private EC2 Instance
+resource "aws_security_group" "private-security-group" {
+  name        = "private_group"             # 'group name' column
+  description = "Allow SSH inbound traffic"
+  vpc_id      = "${aws_vpc.blog-vpc.id}"
+
+  # only allow ssh
+  ingress {
+    from_port = 22
+    to_port   = 22
+    protocol  = "tcp"
+
+    # cidr_blocks = ["0.0.0.0/0"] # no CIDR block, specify subnet instead
+    # Allow connections only from public subnet
+    security_groups = ["${aws_security_group.public-security-group.id}"]
+  }
+
+  tags = {
+    Name = "private_security_group" # 'security group name' column
   }
 }
