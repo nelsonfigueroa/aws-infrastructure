@@ -47,6 +47,7 @@ resource "aws_route_table" "blog-public-route-table" {
   vpc_id = "${aws_vpc.blog-vpc.id}"
 
   # Note that the default route, mapping the VPC's CIDR block to "local", is created implicitly and cannot be specified.
+  # cidr_block = "10.0.0.0/16" is implied
 
   route {
     # destination
@@ -61,7 +62,7 @@ resource "aws_route_table" "blog-public-route-table" {
 }
 
 # associate a subnet with the route table (public subnet in this case)
-resource "aws_route_table_association" "route-table-association" {
+resource "aws_route_table_association" "route-table-association-public" {
   subnet_id      = "${aws_subnet.blog-public-subnet.id}"
   route_table_id = "${aws_route_table.blog-public-route-table.id}"
 }
@@ -90,6 +91,14 @@ resource "aws_security_group" "public-security-group" {
   ingress {
     from_port   = 443
     to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # ssh outbound to be able to connect to private subnet
+  egress {
+    from_port   = 22
+    to_port     = 22
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -129,18 +138,76 @@ resource "aws_security_group" "private-security-group" {
   description = "Allow SSH inbound traffic"
   vpc_id      = "${aws_vpc.blog-vpc.id}"
 
-  # only allow ssh
+  # only allow incoming ssh
   ingress {
     from_port = 22
     to_port   = 22
     protocol  = "tcp"
 
     # cidr_blocks = ["0.0.0.0/0"] # no CIDR block, specify subnet instead
-    # Allow connections only from public subnet
+    # Allow incoming connections only from public subnet
     security_groups = ["${aws_security_group.public-security-group.id}"]
+  }
+
+  # HTTP
+  egress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  # HTTPS
+  egress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   tags = {
     Name = "private_security_group" # 'security group name' column
   }
+}
+
+# provision NAT ec2 instance (or gateway)
+
+# First, get an elastic IP to associate with gateway
+resource "aws_eip" "gateway-elastic-ip" {
+  vpc = true
+}
+
+# provision NAT gateway
+resource "aws_nat_gateway" "nat-gateway" {
+  subnet_id     = "${aws_subnet.blog-public-subnet.id}" # subnet should be public subnet
+  allocation_id = "${aws_eip.gateway-elastic-ip.id}"    # must have an elastic IP associated
+
+  tags = {
+    Name = "NAT Gateway"
+  }
+}
+
+# create another route table associated with private subnet this time
+resource "aws_route_table" "blog-private-route-table" {
+  vpc_id = "${aws_vpc.blog-vpc.id}"
+
+  # Note that the default route, mapping the VPC's CIDR block to "local", is created implicitly and cannot be specified.
+  # cidr_block = "10.0.0.0/16" is implied
+
+  route {
+    # destination
+    cidr_block = "0.0.0.0/0"
+
+    # target will be NAT gateway instead of internet gateway
+    gateway_id = "${aws_nat_gateway.nat-gateway.id}"
+  }
+  tags = {
+    Name = "blog_private_route_table"
+  }
+}
+
+# associate new route table with private subnet
+resource "aws_route_table_association" "route-table-association-private" {
+  subnet_id      = "${aws_subnet.blog-private-subnet.id}"
+  route_table_id = "${aws_route_table.blog-private-route-table.id}"
 }
