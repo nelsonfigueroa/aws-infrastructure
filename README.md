@@ -8,7 +8,7 @@ This project was completed to learn Terraform and strengthen my AWS knowledge. I
 
 Ensure that the code is valid:
 
-```
+```shell
 terraform validate
 ```
 
